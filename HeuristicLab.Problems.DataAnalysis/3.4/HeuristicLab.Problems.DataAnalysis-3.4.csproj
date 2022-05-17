@@ -140,8 +140,11 @@
     <Compile Include="Implementation\Clustering\ClusteringSolution.cs" />
     <Compile Include="Implementation\ConstantModel.cs" />
     <Compile Include="Implementation\DataAnalysisModel.cs" />
+    <Compile Include="Implementation\Interval\BaseInterval.cs" />
+    <Compile Include="Implementation\Interval\BaseIntervalCalculator.cs" />
     <Compile Include="Implementation\Interval\Interval.cs" />
     <Compile Include="Implementation\Interval\IntervalCollection.cs" />
+    <Compile Include="Implementation\Interval\ModalCalculator.cs" />
     <Compile Include="Implementation\Interval\ModalInterval.cs" />
     <Compile Include="Implementation\Regression\ConfidenceBoundRegressionSolution.cs" />
     <Compile Include="Implementation\Regression\ConstantRegressionModel.cs" />
@@ -184,6 +187,7 @@
     <Compile Include="Interfaces\IDataAnalysisSolutionExporter.cs" />
     <Compile Include="Interfaces\IDataset.cs" />
     <Compile Include="Interfaces\IDependencyCalculator.cs" />
+    <Compile Include="Interfaces\IInterval.cs" />
     <Compile Include="Interfaces\ITransformation.cs" />
     <Compile Include="Interfaces\ITransformationMapper.cs" />
     <Compile Include="Interfaces\Regression\IConfidenceRegressionModel.cs" />
