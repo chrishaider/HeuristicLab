@@ -36,7 +36,7 @@ namespace HeuristicLab.Problems.DataAnalysis {
     public double Width => UpperBound - LowerBound;
 
     [StorableConstructor]
-    protected Interval(StorableConstructorFlag _) { }
+    private Interval(StorableConstructorFlag _) { }
 
     /// <summary>
     /// Creates an interval with given bounds, where lower bound must be smaller than

@@ -140,11 +140,8 @@
     <Compile Include="Implementation\Clustering\ClusteringSolution.cs" />
     <Compile Include="Implementation\ConstantModel.cs" />
     <Compile Include="Implementation\DataAnalysisModel.cs" />
-    <Compile Include="Implementation\Interval\BaseInterval.cs" />
-    <Compile Include="Implementation\Interval\BaseIntervalCalculator.cs" />
     <Compile Include="Implementation\Interval\Interval.cs" />
     <Compile Include="Implementation\Interval\IntervalCollection.cs" />
-    <Compile Include="Implementation\Interval\ModalCalculator.cs" />
     <Compile Include="Implementation\Interval\ModalInterval.cs" />
     <Compile Include="Implementation\Regression\ConfidenceBoundRegressionSolution.cs" />
     <Compile Include="Implementation\Regression\ConstantRegressionModel.cs" />
