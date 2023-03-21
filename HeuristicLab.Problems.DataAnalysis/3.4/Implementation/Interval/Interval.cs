@@ -261,7 +261,7 @@ namespace HeuristicLab.Problems.DataAnalysis {
     /// <returns></returns>
     public static Interval SquareRoot(Interval a) {
       if (a.LowerBound < 0) return new Interval(double.NaN, double.NaN);
-      return new Interval(-Math.Sqrt(a.UpperBound), Math.Sqrt(a.UpperBound));
+      return new Interval(Math.Sqrt(a.LowerBound), Math.Sqrt(a.UpperBound));
     }
 
     public static Interval CubicRoot(Interval a) {
