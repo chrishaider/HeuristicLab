@@ -42,7 +42,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
     #endregion
 
     #region IStatefulItem Member
-    private readonly object syncRoot = new();
+    private readonly object syncRoot = new object();
 
     public void InitializeState() {
       EvaluatedSolutions = 0;
@@ -53,18 +53,34 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
 
 
     public double GetConstraintViolation(ISymbolicExpressionTree tree, IRegressionProblemData problemData, ShapeConstraint constraint, IEnumerable<int> rows) {
-      var interpreter = new NativeInterpreter();
+      var interpreter = new SymbolicDataAnalysisExpressionTreeLinearInterpreter();
       var modelImages = interpreter.GetSymbolicExpressionTreeValues(tree, problemData.Dataset, rows);
 
       var violation = new List<double>();
-      foreach (var image in modelImages) {
-        if (constraint.Interval.Contains(image)) continue;
-        violation.Add(image < constraint.Interval.LowerBound
-          ? Math.Abs(image - constraint.Interval.LowerBound)
-          : Math.Abs(image - constraint.Interval.UpperBound));
+
+
+      //Check for constraint regions
+      if(constraint.Regions.Count == 0) {
+        foreach(var image in modelImages) {
+          if(constraint.Interval.Contains(image)) continue;
+          violation.Add(image < constraint.Interval.LowerBound
+            ? Math.Abs(image - constraint.Interval.LowerBound)
+            : Math.Abs(image - constraint.Interval.UpperBound));
+        }
+      } else {
+        //only one region can be specified per constraint
+        var region = constraint.Regions.GetDictionary().First();
+
+        for(var i = rows.First(); i < rows.Last(); ++i) {
+          if(!region.Value.Contains(problemData.Dataset.GetDoubleValue(region.Key, i))) continue;
+
+          violation.Add(modelImages.ElementAt(i) < constraint.Interval.LowerBound
+            ? Math.Abs(modelImages.ElementAt(i) - constraint.Interval.LowerBound)
+            : Math.Abs(modelImages.ElementAt(i) - constraint.Interval.UpperBound));
+        }
       }
 
-      return violation.Max();
+      return violation.Count > 0 ? violation.Max() : 0;
     }
 
 

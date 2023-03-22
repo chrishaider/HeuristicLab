@@ -80,7 +80,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
       IRegressionProblemData problemData, ISymbolicExpressionTree tree) {
 
       if (!constraint.IsDerivative)
-        return optimisticEstimator.GetConstraintViolation(tree, problemData, constraint, Enumerable.Range(problemData.TrainingPartition.Start, problemData.Dataset.Rows));
+        return optimisticEstimator.GetConstraintViolation(tree, problemData, constraint, Enumerable.Range(problemData.TrainingPartition.Start, problemData.TrainingPartition.End));
 
       for (var i = 0; i < constraint.NumberOfDerivations; ++i) {
         if (!optimisticEstimator.IsCompatible(tree) || !DerivativeCalculator.IsCompatible(tree)) {
@@ -90,7 +90,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
         tree = DerivativeCalculator.Derive(tree, constraint.Variable);
       }
 
-      return optimisticEstimator.GetConstraintViolation(tree, problemData, constraint, Enumerable.Range(problemData.TrainingPartition.Start, problemData.Dataset.Rows));
+      return optimisticEstimator.GetConstraintViolation(tree, problemData, constraint, Enumerable.Range(problemData.TrainingPartition.Start, problemData.TrainingPartition.End));
     }
   }
 }
