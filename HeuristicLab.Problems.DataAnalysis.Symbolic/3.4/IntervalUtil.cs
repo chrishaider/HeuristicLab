@@ -28,13 +28,13 @@ using HeuristicLab.Encodings.SymbolicExpressionTreeEncoding;
 namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
   public static class IntervalUtil {
     public static IEnumerable<double> GetConstraintViolations(
-      IEnumerable<ShapeConstraint> constraints, IBoundsEstimator estimator, IntervalCollection intervalCollection,
+      IEnumerable<ShapeConstraint> constraints, IPessimisticEstimator estimator, IntervalCollection intervalCollection,
       ISymbolicExpressionTree solution) {
       return constraints.Select(constraint => GetConstraintViolation(constraint, estimator, intervalCollection, solution)).ToList();
     }
 
     public static double GetConstraintViolation(
-      ShapeConstraint constraint, IBoundsEstimator estimator, IntervalCollection variableRanges,
+      ShapeConstraint constraint, IPessimisticEstimator estimator, IntervalCollection variableRanges,
       ISymbolicExpressionTree tree) {
       var varRanges = variableRanges.GetReadonlyDictionary();
 
@@ -67,6 +67,30 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
 
         return estimator.GetConstraintViolation(tree, regionRanges, constraint);
       }
+    }
+
+
+    public static IEnumerable<double> GetConstraintViolations(IEnumerable<ShapeConstraint> constraints,
+      IOptimisticEstimator estimator, IRegressionProblemData problemData, ISymbolicExpressionTree tree) {
+
+      return constraints.Select(constraint => GetConstraintViolation(constraint, estimator, problemData, tree)).ToList();
+    }
+
+    public static double GetConstraintViolation(ShapeConstraint constraint, IOptimisticEstimator optimisticEstimator,
+      IRegressionProblemData problemData, ISymbolicExpressionTree tree) {
+
+      if (!constraint.IsDerivative)
+        return optimisticEstimator.GetConstraintViolation(tree, problemData, constraint, Enumerable.Range(problemData.TrainingPartition.Start, problemData.Dataset.Rows));
+
+      for (var i = 0; i < constraint.NumberOfDerivations; ++i) {
+        if (!optimisticEstimator.IsCompatible(tree) || !DerivativeCalculator.IsCompatible(tree)) {
+          throw new ArgumentException("The tree contains an unsupported symbol.");
+        }
+
+        tree = DerivativeCalculator.Derive(tree, constraint.Variable);
+      }
+
+      return optimisticEstimator.GetConstraintViolation(tree, problemData, constraint, Enumerable.Range(problemData.TrainingPartition.Start, problemData.Dataset.Rows));
     }
   }
 }

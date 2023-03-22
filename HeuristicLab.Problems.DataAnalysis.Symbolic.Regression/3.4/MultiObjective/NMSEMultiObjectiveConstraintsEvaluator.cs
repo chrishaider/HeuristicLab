@@ -37,13 +37,13 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
   [StorableType("8E9D76B7-ED9C-43E7-9898-01FBD3633880")]
   public class NMSEMultiObjectiveConstraintsEvaluator : SymbolicRegressionMultiObjectiveEvaluator, IMultiObjectiveConstraintsEvaluator {
     private const string NumConstraintsParameterName = "NumConstraints";
-    private const string BoundsEstimatorParameterName = "BoundsEstimator";
+    private const string BoundsEstimatorParameterName = "ConstraintEstimator";
 
     public IFixedValueParameter<IntValue> NumConstraintsParameter =>
       (IFixedValueParameter<IntValue>)Parameters[NumConstraintsParameterName];
 
-    public IValueParameter<IBoundsEstimator> BoundsEstimatorParameter =>
-      (IValueParameter<IBoundsEstimator>)Parameters[BoundsEstimatorParameterName];
+    public IValueParameter<IPessimisticEstimator> BoundsEstimatorParameter =>
+      (IValueParameter<IPessimisticEstimator>)Parameters[BoundsEstimatorParameterName];
 
     public int NumConstraints {
       get => NumConstraintsParameter.Value.Value;
@@ -52,7 +52,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       }
     }
 
-    public IBoundsEstimator BoundsEstimator {
+    public IPessimisticEstimator PessimisticEstimator {
       get => BoundsEstimatorParameter.Value;
       set => BoundsEstimatorParameter.Value = value;
     }
@@ -63,7 +63,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
     public NMSEMultiObjectiveConstraintsEvaluator() {
       Parameters.Add(new FixedValueParameter<IntValue>(NumConstraintsParameterName, new IntValue(0)));
-      Parameters.Add(new ValueParameter<IBoundsEstimator>(BoundsEstimatorParameterName, new IntervalArithBoundsEstimator()));
+      Parameters.Add(new ValueParameter<IPessimisticEstimator>(BoundsEstimatorParameterName, new IntervalArithPessimisticEstimator()));
     }
 
     [StorableConstructor]
@@ -126,7 +126,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       }
 
       var qualities = Calculate(interpreter, tree, estimationLimits.Lower, estimationLimits.Upper, problemData,
-        rows, BoundsEstimator, DecimalPlaces);
+        rows, PessimisticEstimator, DecimalPlaces);
       QualitiesParameter.ActualValue = new DoubleArray(qualities);
       return base.InstrumentedApply();
     }
@@ -141,7 +141,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
       var quality = Calculate(SymbolicDataAnalysisTreeInterpreterParameter.ActualValue, tree,
         EstimationLimitsParameter.ActualValue.Lower, EstimationLimitsParameter.ActualValue.Upper,
-        problemData, rows, BoundsEstimator, DecimalPlaces);
+        problemData, rows, PessimisticEstimator, DecimalPlaces);
 
       SymbolicDataAnalysisTreeInterpreterParameter.ExecutionContext = null;
       EstimationLimitsParameter.ExecutionContext = null;
@@ -155,7 +155,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
       ISymbolicExpressionTree solution, double lowerEstimationLimit,
       double upperEstimationLimit,
-      IRegressionProblemData problemData, IEnumerable<int> rows, IBoundsEstimator estimator, int decimalPlaces) {
+      IRegressionProblemData problemData, IEnumerable<int> rows, IPessimisticEstimator estimator, int decimalPlaces) {
       var estimatedValues = interpreter.GetSymbolicExpressionTreeValues(solution, problemData.Dataset, rows);
       var targetValues = problemData.Dataset.GetDoubleValues(problemData.TargetVariable, rows);
       var constraints = Enumerable.Empty<ShapeConstraint>();

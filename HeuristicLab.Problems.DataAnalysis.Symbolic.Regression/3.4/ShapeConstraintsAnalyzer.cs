@@ -103,7 +103,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       var constraints = problemData.ShapeConstraints.EnabledConstraints;
       var variableRanges = problemData.VariableRanges;
       var constraintViolationsTable = ConstraintViolations;
-      var estimator = new IntervalArithBoundsEstimator();
+      var estimator = new IntervalArithPessimisticEstimator();
 
       if (!constraintViolationsTable.Rows.Any())
         foreach (var constraint in constraints)

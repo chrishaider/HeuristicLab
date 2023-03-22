@@ -172,7 +172,9 @@
     <Compile Include="Importer\InfixExpressionParser.cs" />
     <Compile Include="Importer\SymbolicExpressionImporter.cs" />
     <Compile Include="Importer\Token.cs" />
-    <Compile Include="Interfaces\IBoundsEstimator.cs" />
+    <Compile Include="Interfaces\IOptimisticEstimator.cs" />
+    <Compile Include="Interfaces\IPessimisticEstimator.cs" />
+    <Compile Include="Interfaces\IConstraintEstimator.cs" />
     <Compile Include="Interfaces\IModelBacktransformator.cs" />
     <Compile Include="Interfaces\INumericSymbol.cs" />
     <Compile Include="Interfaces\INumericTreeNode.cs" />
@@ -180,11 +182,13 @@
     <Compile Include="Interfaces\IVariableSymbol.cs" />
     <Compile Include="Interpreter\BatchInstruction.cs" />
     <Compile Include="Interpreter\BatchOperations.cs" />
-    <Compile Include="Interpreter\IntervalArithBoundsEstimator.cs" />
-    <Compile Include="Interpreter\IntervalArithCompiledExpressionBoundsEstimator.cs" />
+    <Compile Include="Interpreter\IntervalArithPessimisticEstimator.cs" />
+    <Compile Include="Interpreter\IntervalArithCompiledExpressionPessimisticEstimator.cs" />
+    <Compile Include="Interpreter\ModalArithPessimisticEstimator.cs" />
     <Compile Include="Interpreter\IntervalInterpreter.cs" />
     <Compile Include="Interpreter\NativeInterpreter.cs" />
     <Compile Include="Interpreter\ParameterOptimizer.cs" />
+    <Compile Include="Interpreter\SamplingOptimisticEstimator.cs" />
     <Compile Include="Interpreter\SymbolicDataAnalysisExpressionCompiledTreeInterpreter.cs" />
     <Compile Include="Interpreter\SymbolicDataAnalysisExpressionTreeBatchInterpreter.cs" />
     <Compile Include="IntervalUtil.cs" />

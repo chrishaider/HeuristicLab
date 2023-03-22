@@ -38,7 +38,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     private const string OptimizeParametersParameterName = "OptimizeParameters";
     private const string ParameterOptimizationIterationsParameterName = "ParameterOptimizationIterations";
     private const string UseSoftConstraintsParameterName = "UseSoftConstraintsEvaluation";
-    private const string BoundsEstimatorParameterName = "BoundsEstimator";
+    private const string BoundsEstimatorParameterName = "ConstraintEstimator";
     private const string PenaltyFactorParameterName = "PenaltyFactor";
 
 
@@ -51,8 +51,8 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     public IFixedValueParameter<BoolValue> UseSoftConstraintsParameter =>
       (IFixedValueParameter<BoolValue>)Parameters[UseSoftConstraintsParameterName];
 
-    public IValueParameter<IBoundsEstimator> BoundsEstimatorParameter =>
-      (IValueParameter<IBoundsEstimator>)Parameters[BoundsEstimatorParameterName];
+    public IValueParameter<IPessimisticEstimator> BoundsEstimatorParameter =>
+      (IValueParameter<IPessimisticEstimator>)Parameters[BoundsEstimatorParameterName];
     public IFixedValueParameter<DoubleValue> PenaltyFactorParameter =>
       (IFixedValueParameter<DoubleValue>)Parameters[PenaltyFactorParameterName];
 
@@ -71,7 +71,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       set => UseSoftConstraintsParameter.Value.Value = value;
     }
 
-    public IBoundsEstimator BoundsEstimator {
+    public IPessimisticEstimator PessimisticEstimator {
       get => BoundsEstimatorParameter.Value;
       set => BoundsEstimatorParameter.Value = value;
     }
@@ -101,8 +101,8 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
         "Define how many parameter optimization steps should be performed (default: 10).", new IntValue(10)));
       Parameters.Add(new FixedValueParameter<BoolValue>(UseSoftConstraintsParameterName,
         "Define whether the constraints are penalized by soft or hard constraints (default: false).", new BoolValue(false)));
-      Parameters.Add(new ValueParameter<IBoundsEstimator>(BoundsEstimatorParameterName,
-        "The estimator which is used to estimate output ranges of models (default: interval arithmetic).", new IntervalArithBoundsEstimator()));
+      Parameters.Add(new ValueParameter<IPessimisticEstimator>(BoundsEstimatorParameterName,
+        "The estimator which is used to estimate output ranges of models (default: interval arithmetic).", new IntervalArithPessimisticEstimator()));
       Parameters.Add(new FixedValueParameter<DoubleValue>(PenaltyFactorParameterName,
         "Punishment factor for constraint violations for soft constraint handling (fitness = NMSE + penaltyFactor * avg(violations)) (default: 1.0)", new DoubleValue(1.0)));
     }
@@ -171,7 +171,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       IRegressionProblemData problemData, IEnumerable<int> rows,
       ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
       double lowerEstimationLimit, double upperEstimationLimit,
-      IBoundsEstimator estimator,
+      IPessimisticEstimator estimator,
       bool useSoftConstraints = false, double penaltyFactor = 1.0) {
 
       var constraints = Enumerable.Empty<ShapeConstraint>();
@@ -225,7 +225,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
         SymbolicDataAnalysisTreeInterpreterParameter.ActualValue,
         EstimationLimitsParameter.ActualValue.Lower,
         EstimationLimitsParameter.ActualValue.Upper,
-        BoundsEstimator,
+        PessimisticEstimator,
         UseSoftConstraints,
         PenalityFactor);
 
@@ -261,7 +261,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
         rows, interpreter,
         lowerEstimationLimit,
         upperEstimationLimit,
-        BoundsEstimator,
+        PessimisticEstimator,
         UseSoftConstraints,
         PenalityFactor);
     }

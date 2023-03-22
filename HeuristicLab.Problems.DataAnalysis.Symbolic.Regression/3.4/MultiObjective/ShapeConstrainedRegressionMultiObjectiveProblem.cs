@@ -61,7 +61,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     public override IDeepCloneable Clone(Cloner cloner) { return new ShapeConstrainedRegressionMultiObjectiveProblem(this, cloner); }
 
     public ShapeConstrainedRegressionMultiObjectiveProblem()
-      : base(new ShapeConstrainedRegressionProblemData(), new NMSEMultiObjectiveConstraintsEvaluator(), new SymbolicDataAnalysisExpressionTreeCreator()) {
+      : base(new ShapeConstrainedRegressionProblemData(), new NMSEMultiObjectiveSummedConstraintsEvaluator(), new SymbolicDataAnalysisExpressionTreeCreator()) {
 
       Parameters.Add(new FixedValueParameter<DoubleLimit>(EstimationLimitsParameterName, EstimationLimitsParameterDescription));
       EstimationLimitsParameter.Hidden = true;

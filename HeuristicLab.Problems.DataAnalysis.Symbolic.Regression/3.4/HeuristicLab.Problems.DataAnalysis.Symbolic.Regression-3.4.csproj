@@ -131,6 +131,7 @@
   <ItemGroup>
     <Compile Include="Interfaces\IMultiObjectiveConstraintsEvaluator.cs" />
     <Compile Include="MultiObjective\NMSEMultiObjectiveConstraintsEvaluator.cs" />
+    <Compile Include="MultiObjective\NMSEMultiObjectiveSummedConstraintsEvaluator.cs" />
     <Compile Include="MultiObjective\PearsonRSquaredNestedTreeSizeEvaluator.cs" />
     <Compile Include="MultiObjective\PearsonRSquaredNumberOfVariablesEvaluator.cs" />
     <Compile Include="MultiObjective\PearsonRSquaredAverageSimilarityEvaluator.cs" />

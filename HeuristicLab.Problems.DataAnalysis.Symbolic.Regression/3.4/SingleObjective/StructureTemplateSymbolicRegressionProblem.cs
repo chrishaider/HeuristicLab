@@ -315,7 +315,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       if (ProblemData is ShapeConstrainedRegressionProblemData scProbData)
         constraints = scProbData.ShapeConstraints.EnabledConstraints;
       if (constraints.Any()) {
-        var boundsEstimator = new IntervalArithBoundsEstimator();
+        var boundsEstimator = new IntervalArithPessimisticEstimator();
         var constraintViolations = IntervalUtil.GetConstraintViolations(constraints, boundsEstimator, ProblemData.VariableRanges, tree);
 
         // infinite/NaN constraints
