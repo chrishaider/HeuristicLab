@@ -133,6 +133,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       Operators.Add(new SymbolicRegressionMultiObjectiveValidationBestSolutionAnalyzer());
       Operators.Add(new SymbolicExpressionTreePhenotypicSimilarityCalculator());
       Operators.Add(new SymbolicRegressionPhenotypicDiversityAnalyzer(Operators.OfType<SymbolicExpressionTreePhenotypicSimilarityCalculator>()));
+      Operators.Add(new MultiObjectiveValidSolutionAnalyzer());
       ParameterizeOperators();
     }
 

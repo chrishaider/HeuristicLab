@@ -114,13 +114,119 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       var interpreter = SymbolicDataAnalysisTreeInterpreterParameter.ActualValue;
       var estimationLimits = EstimationLimitsParameter.ActualValue;
       var applyLinearScaling = ApplyLinearScalingParameter.ActualValue.Value;
-      var x = MaximumGenerationsParameter.ActualValue;
-      var y = GenerationsParameter.ActualValue;
       var quality = Evaluate(tree, problemData, rows, interpreter, applyLinearScaling, estimationLimits.Lower, estimationLimits.Upper);
       QualityParameter.ActualValue = new DoubleValue(quality);
 
       return base.InstrumentedApply();
     }
+
+
+    public static double Calculate(
+      ISymbolicExpressionTree tree,
+      IRegressionProblemData problemData, IEnumerable<int> rows,
+      ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
+      double lowerEstimationLimit, double upperEstimationLimit,
+      IPessimisticEstimator estimator,
+      int maxGenerations, int currentGeneration) {
+
+
+      var constraints = Enumerable.Empty<ShapeConstraint>();
+      if (problemData is ShapeConstrainedRegressionProblemData scProbData)
+        constraints = scProbData.ShapeConstraints.EnabledConstraints;
+
+      var estimatedValues = interpreter.GetSymbolicExpressionTreeValues(tree, problemData.Dataset, rows);
+      var boundedEstimatedValues = estimatedValues.LimitToRange(lowerEstimationLimit, upperEstimationLimit);
+      var targetValues = problemData.Dataset.GetDoubleValues(problemData.TargetVariable, rows);
+      var nmse = OnlineNormalizedMeanSquaredErrorCalculator.Calculate(targetValues, boundedEstimatedValues, out var errorState);
+      if (errorState != OnlineCalculatorError.None)
+        return 1.0;
+
+      if (!constraints.Any())
+        return nmse;
+
+      var intervalCollection = problemData.VariableRanges;
+      var constraintViolations = IntervalUtil.GetConstraintViolations(constraints, estimator, intervalCollection, tree);
+
+      // infinite/NaN constraints
+      if (constraintViolations.Any(x => double.IsNaN(x) || double.IsInfinity(x)))
+        return 1.0;
+
+      // soft constraints
+      //Calculate penalty factor as a percentage of current generation
+      int normPenalty = (currentGeneration * 100 / maxGenerations);
+      double penaltyFactor = normPenalty / 100.0;
+      var weightedViolationsAvg = constraints
+        .Zip(constraintViolations, (c, v) => c.Weight * v)
+        .Average();
+
+      return Math.Min(nmse, 1.0) + penaltyFactor * weightedViolationsAvg;
+    }
+
+    public override double Evaluate(
+      IExecutionContext context, ISymbolicExpressionTree tree, IRegressionProblemData problemData,
+      IEnumerable<int> rows) {
+      SymbolicDataAnalysisTreeInterpreterParameter.ExecutionContext = context;
+      EstimationLimitsParameter.ExecutionContext = context;
+
+
+      ApplyLinearScalingParameter.ExecutionContext = context;
+
+      var maxGenerations = MaximumGenerationsParameter.ActualValue.Value;
+      var currentGeneration = 0;
+      if (GenerationsParameter.ActualValue != null)
+        currentGeneration = GenerationsParameter.ActualValue.Value;
+
+      var nmse = Calculate(
+        tree, problemData, rows,
+        SymbolicDataAnalysisTreeInterpreterParameter.ActualValue,
+        EstimationLimitsParameter.ActualValue.Lower,
+        EstimationLimitsParameter.ActualValue.Upper,
+        PessimisticEstimator,
+        maxGenerations, currentGeneration);
+
+      SymbolicDataAnalysisTreeInterpreterParameter.ExecutionContext = null;
+      EstimationLimitsParameter.ExecutionContext = null;
+      ApplyLinearScalingParameter.ExecutionContext = null;
+
+      return nmse;
+    }
+
+    public override double Evaluate(
+      ISymbolicExpressionTree tree,
+      IRegressionProblemData problemData,
+      IEnumerable<int> rows,
+      ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
+      bool applyLinearScaling = true,
+      double lowerEstimationLimit = double.MinValue,
+      double upperEstimationLimit = double.MaxValue) {
+
+      var maxGenerations = MaximumGenerationsParameter.ActualValue.Value;
+      var currentGeneration = 0;
+      if (GenerationsParameter.ActualValue != null) 
+        currentGeneration = GenerationsParameter.ActualValue.Value;
+
+      if (OptimizeParameters)
+        Optimize(
+          interpreter, tree,
+          problemData, rows,
+          ParameterOptimizationIterations,
+          updateVariableWeights: true,
+          lowerEstimationLimit,
+          upperEstimationLimit);
+      else if (applyLinearScaling) // extra scaling terms, which are included in tree
+        CalcLinearScalingTerms(tree, problemData, rows, interpreter);
+
+      return Calculate(
+        tree, problemData,
+        rows, interpreter,
+        lowerEstimationLimit,
+        upperEstimationLimit,
+        PessimisticEstimator,
+        maxGenerations,
+        currentGeneration);
+    }
+
+    #region Linear Scaling
 
     private static void CalcLinearScalingTerms(
       ISymbolicExpressionTree tree,
@@ -130,7 +236,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       var rootNode = new ProgramRootSymbol().CreateTreeNode();
       var startNode = new StartSymbol().CreateTreeNode();
       var offset = tree.Root.GetSubtree(0) //Start
-                            .GetSubtree(0); //Offset
+        .GetSubtree(0); //Offset
       var scaling = offset.GetSubtree(0);
 
       //Check if tree contains offset and scaling nodes
@@ -158,112 +264,16 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       }
     }
 
-    public static double Calculate(
-      ISymbolicExpressionTree tree,
-      IRegressionProblemData problemData, IEnumerable<int> rows,
-      ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
-      double lowerEstimationLimit, double upperEstimationLimit,
-      IPessimisticEstimator estimator,
-      bool useSoftConstraints = false, double penaltyFactor = 1.0) {
 
+    #endregion
 
-      var constraints = Enumerable.Empty<ShapeConstraint>();
-      if (problemData is ShapeConstrainedRegressionProblemData scProbData)
-        constraints = scProbData.ShapeConstraints.EnabledConstraints;
-
-      var estimatedValues = interpreter.GetSymbolicExpressionTreeValues(tree, problemData.Dataset, rows);
-      var boundedEstimatedValues = estimatedValues.LimitToRange(lowerEstimationLimit, upperEstimationLimit);
-      var targetValues = problemData.Dataset.GetDoubleValues(problemData.TargetVariable, rows);
-      var nmse = OnlineNormalizedMeanSquaredErrorCalculator.Calculate(targetValues, boundedEstimatedValues, out var errorState);
-      if (errorState != OnlineCalculatorError.None)
-        return 1.0;
-
-      if (!constraints.Any())
-        return nmse;
-
-      var intervalCollection = problemData.VariableRanges;
-      var constraintViolations = IntervalUtil.GetConstraintViolations(constraints, estimator, intervalCollection, tree);
-
-      // infinite/NaN constraints
-      if (constraintViolations.Any(x => double.IsNaN(x) || double.IsInfinity(x)))
-        return 1.0;
-
-      // hard constraints
-      if (!useSoftConstraints) {
-        if (constraintViolations.Any(x => x > 0.0))
-          return 1.0;
-        return nmse;
-      }
-
-      // soft constraints
-      if (penaltyFactor < 0.0)
-        throw new ArgumentException("The parameter has to be >= 0.0.", nameof(penaltyFactor));
-
-      var weightedViolationsAvg = constraints
-        .Zip(constraintViolations, (c, v) => c.Weight * v)
-        .Average();
-
-      return Math.Min(nmse, 1.0) + penaltyFactor * weightedViolationsAvg;
-    }
-
-    public override double Evaluate(
-      IExecutionContext context, ISymbolicExpressionTree tree, IRegressionProblemData problemData,
-      IEnumerable<int> rows) {
-      SymbolicDataAnalysisTreeInterpreterParameter.ExecutionContext = context;
-      EstimationLimitsParameter.ExecutionContext = context;
-      ApplyLinearScalingParameter.ExecutionContext = context;
-
-      var nmse = Calculate(
-        tree, problemData, rows,
-        SymbolicDataAnalysisTreeInterpreterParameter.ActualValue,
-        EstimationLimitsParameter.ActualValue.Lower,
-        EstimationLimitsParameter.ActualValue.Upper,
-        PessimisticEstimator,
-        UseSoftConstraints,
-        PenalityFactor);
-
-      SymbolicDataAnalysisTreeInterpreterParameter.ExecutionContext = null;
-      EstimationLimitsParameter.ExecutionContext = null;
-      ApplyLinearScalingParameter.ExecutionContext = null;
-
-      return nmse;
-    }
-
-    public override double Evaluate(
-      ISymbolicExpressionTree tree,
-      IRegressionProblemData problemData,
-      IEnumerable<int> rows,
-      ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
-      bool applyLinearScaling = true,
-      double lowerEstimationLimit = double.MinValue,
-      double upperEstimationLimit = double.MaxValue) {
-
-      if (OptimizeParameters)
-        Optimize(
-          interpreter, tree,
-          problemData, rows,
-          ParameterOptimizationIterations,
-          updateVariableWeights: true,
-          lowerEstimationLimit,
-          upperEstimationLimit);
-      else if (applyLinearScaling) // extra scaling terms, which are included in tree
-        CalcLinearScalingTerms(tree, problemData, rows, interpreter);
-
-      return Calculate(
-        tree, problemData,
-        rows, interpreter,
-        lowerEstimationLimit,
-        upperEstimationLimit,
-        PessimisticEstimator,
-        UseSoftConstraints,
-        PenalityFactor);
-    }
+    #region Parameter Optimization
 
     public static double Optimize(ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
-          ISymbolicExpressionTree tree, IRegressionProblemData problemData, IEnumerable<int> rows,
-          int maxIterations, bool updateVariableWeights = true,
-          double lowerEstimationLimit = double.MinValue, double upperEstimationLimit = double.MaxValue,
-          bool updateParametersInTree = true, Action<double[], double, object> iterationCallback = null, EvaluationsCounter counter = null) {
+      ISymbolicExpressionTree tree, IRegressionProblemData problemData, IEnumerable<int> rows,
+      int maxIterations, bool updateVariableWeights = true,
+      double lowerEstimationLimit = double.MinValue, double upperEstimationLimit = double.MaxValue,
+      bool updateParametersInTree = true, Action<double[], double, object> iterationCallback = null, EvaluationsCounter counter = null) {
 
       // Numeric parameters in the tree become variables for parameter optimization.
       // Variables in the tree become parameters (fixed values) for parameter optimization.
@@ -420,5 +430,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       public int FunctionEvaluations = 0;
       public int GradientEvaluations = 0;
     }
+
+    #endregion
   }
 }

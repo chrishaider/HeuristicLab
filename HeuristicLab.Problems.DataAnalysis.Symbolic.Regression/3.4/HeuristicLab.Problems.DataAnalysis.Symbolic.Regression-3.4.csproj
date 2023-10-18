@@ -130,6 +130,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Interfaces\IMultiObjectiveConstraintsEvaluator.cs" />
+    <Compile Include="MultiObjective\MultiObjectiveValidSolutionAnalyzer.cs" />
     <Compile Include="MultiObjective\NMSEMultiObjectiveConstraintsEvaluator.cs" />
     <Compile Include="MultiObjective\NMSEMultiObjectiveSummedConstraintsEvaluator.cs" />
     <Compile Include="MultiObjective\PearsonRSquaredNestedTreeSizeEvaluator.cs" />
@@ -141,6 +142,7 @@
     <Compile Include="ParameterOptimization.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="ShapeConstraintsAnalyzer.cs" />
+    <Compile Include="SingleObjective\Evaluators\NMSESoftConstraintEvaluator.cs" />
     <Compile Include="SingleObjective\Evaluators\ParameterOptimizationEvaluator.cs" />
     <Compile Include="SingleObjective\ParameterOptimizationAnalyzer.cs" />
     <Compile Include="SingleObjective\Evaluators\NMSESingleObjectiveConstraintsEvaluator.cs" />
