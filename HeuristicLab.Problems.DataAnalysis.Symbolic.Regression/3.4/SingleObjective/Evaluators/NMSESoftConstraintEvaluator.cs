@@ -153,11 +153,17 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
       // soft constraints
       //Calculate penalty factor as a percentage of current generation
-      int normPenalty = (currentGeneration * 100 / maxGenerations);
-      double penaltyFactor = normPenalty / 100.0;
+      var end = 100;
+      var start = 50;
+      var proportion = (double)(end - start) / maxGenerations;
+      var penalty = (int)(start + (proportion * currentGeneration));
+      var penaltyFactor = penalty / 100.0;
       var weightedViolationsAvg = constraints
         .Zip(constraintViolations, (c, v) => c.Weight * v)
         .Average();
+
+      //var violationProp = 1.0 / constraints.Count();
+      //var weightedViolationsAvg = constraintViolations.Where(cv => cv > 0).Aggregate(0.0, (current, cv) => current + violationProp);
 
       return Math.Min(nmse, 1.0) + penaltyFactor * weightedViolationsAvg;
     }

@@ -39,6 +39,8 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     private const string NumConstraintsParameterName = "NumConstraints";
     private const string ConstraintEstimatorParameterName = "ConstraintEstimator";
     private const string UseSimplificationParameterName = "UseSimplification";
+    private const string MaximumGenerationsParameterName = "MaximumGenerations";
+    private const string GenerationsParameterName = "Generations";
 
     #region Parameters
     public IFixedValueParameter<IntValue> NumConstraintsParameter =>
@@ -67,6 +69,11 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
     public override IEnumerable<bool> Maximization => new bool[2]; // minimize all objectives
 
+
+    public ILookupParameter<IntValue> MaximumGenerationsParameter => (ILookupParameter<IntValue>)Parameters[MaximumGenerationsParameterName];
+
+    public ILookupParameter<IntValue> GenerationsParameter =>
+      (ILookupParameter<IntValue>)Parameters[GenerationsParameterName];
     #endregion
 
     #region Constructors
@@ -75,6 +82,9 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       Parameters.Add(new FixedValueParameter<IntValue>(NumConstraintsParameterName, new IntValue(0)));
       Parameters.Add(new ValueParameter<IConstraintEstimator>(ConstraintEstimatorParameterName, new IntervalArithPessimisticEstimator()));
       Parameters.Add(new FixedValueParameter<BoolValue>(UseSimplificationParameterName, new BoolValue(false)));
+
+      Parameters.Add(new LookupParameter<IntValue>(MaximumGenerationsParameterName, "The maximum number of generations which should be processed."));
+      Parameters.Add(new LookupParameter<IntValue>(GenerationsParameterName, "The current number of generations."));
     }
 
     [StorableConstructor]
@@ -148,9 +158,13 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
           tree = TreeSimplifier.Simplify(tree);
         }
       }
+      var maxGenerations = MaximumGenerationsParameter.ActualValue.Value;
+      var currentGeneration = 0;
+      if (GenerationsParameter.ActualValue != null)
+        currentGeneration = GenerationsParameter.ActualValue.Value;
 
       var qualities = Calculate(interpreter, tree, estimationLimits.Lower, estimationLimits.Upper, problemData,
-        rows, ConstraintEstimator, DecimalPlaces);
+        rows, ConstraintEstimator, currentGeneration, maxGenerations, DecimalPlaces);
       QualitiesParameter.ActualValue = new DoubleArray(qualities);
       return base.InstrumentedApply();
     }
@@ -163,9 +177,14 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       EstimationLimitsParameter.ExecutionContext = context;
       ApplyLinearScalingParameter.ExecutionContext = context;
 
+      var maxGenerations = MaximumGenerationsParameter.ActualValue.Value;
+      var currentGeneration = 0;
+      if (GenerationsParameter.ActualValue != null)
+        currentGeneration = GenerationsParameter.ActualValue.Value;
+
       var quality = Calculate(SymbolicDataAnalysisTreeInterpreterParameter.ActualValue, tree,
         EstimationLimitsParameter.ActualValue.Lower, EstimationLimitsParameter.ActualValue.Upper,
-        problemData, rows, ConstraintEstimator, DecimalPlaces);
+        problemData, rows, ConstraintEstimator, currentGeneration, maxGenerations, DecimalPlaces);
 
       SymbolicDataAnalysisTreeInterpreterParameter.ExecutionContext = null;
       EstimationLimitsParameter.ExecutionContext = null;
@@ -178,7 +197,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       ISymbolicDataAnalysisExpressionTreeInterpreter interpreter,
       ISymbolicExpressionTree solution, double lowerEstimationLimit,
       double upperEstimationLimit,
-      IRegressionProblemData problemData, IEnumerable<int> rows, IConstraintEstimator estimator, int decimalPlaces = 4) {
+      IRegressionProblemData problemData, IEnumerable<int> rows, IConstraintEstimator estimator, int currentGeneration, int maxGenerations, int decimalPlaces = 4) {
       var estimatedValues = interpreter.GetSymbolicExpressionTreeValues(solution, problemData.Dataset, rows);
       var targetValues = problemData.Dataset.GetDoubleValues(problemData.TargetVariable, rows);
       var constraints = Enumerable.Empty<ShapeConstraint>();
@@ -199,6 +218,12 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       if (nmse > 1)
         nmse = 1.0;
 
+      var end = 100;
+      var start = 0;
+      var proportion = (double)(end - start) / maxGenerations;
+      var penalty = (int)(start + (proportion * currentGeneration));
+      var penaltyFactor = penalty / 100.0;
+
       var objectives = new List<double> { nmse };
       var violations = 0.0d;
       switch (estimator)
@@ -216,7 +241,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
         violations = Math.Round(violations, decimalPlaces);
       }
 
-      objectives.Add(double.IsNaN(violations) ? double.PositiveInfinity : violations);
+      objectives.Add(double.IsNaN(violations) ? double.PositiveInfinity : violations* penaltyFactor);
 
       return objectives.ToArray();
     }
