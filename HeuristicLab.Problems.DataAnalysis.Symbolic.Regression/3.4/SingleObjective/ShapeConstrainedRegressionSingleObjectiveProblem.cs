@@ -50,6 +50,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
     private void InitializeOperators() {
       Operators.Add(new ShapeConstraintsAnalyzer());
+      Operators.Add(new ShapeConstraintSolutionAnalyzer());
       ParameterizeOperators();
     }
 

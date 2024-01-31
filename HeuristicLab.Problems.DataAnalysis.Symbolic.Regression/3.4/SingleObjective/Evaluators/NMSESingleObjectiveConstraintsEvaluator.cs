@@ -28,6 +28,8 @@ using HeuristicLab.Core;
 using HeuristicLab.Data;
 using HeuristicLab.Encodings.SymbolicExpressionTreeEncoding;
 using HeuristicLab.Parameters;
+using HeuristicLab.Problems.DataAnalysis.Symbolicr;
+using HeuristicLab.Random;
 
 namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
   [Item("NMSE Evaluator with shape-constraints (single-objective)", "Calculates NMSE of a symbolic regression solution and checks constraints. The fitness is a combination of NMSE and constraint violations.")]
@@ -40,7 +42,8 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     private const string UseSoftConstraintsParameterName = "UseSoftConstraintsEvaluation";
     private const string BoundsEstimatorParameterName = "ConstraintEstimator";
     private const string PenaltyFactorParameterName = "PenaltyFactor";
-
+    private const string SamplesParameterName = "Samples";
+    private const string SampleSizeParameterName = "SampleSize";
 
     public IFixedValueParameter<BoolValue> OptimizerParametersParameter =>
       (IFixedValueParameter<BoolValue>)Parameters[OptimizeParametersParameterName];
@@ -55,6 +58,17 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       (IValueParameter<IPessimisticEstimator>)Parameters[BoundsEstimatorParameterName];
     public IFixedValueParameter<DoubleValue> PenaltyFactorParameter =>
       (IFixedValueParameter<DoubleValue>)Parameters[PenaltyFactorParameterName];
+
+    public IValueLookupParameter<Dataset> SamplesParameter =>
+      (IValueLookupParameter<Dataset>)Parameters[SamplesParameterName];
+
+    public IFixedValueParameter<IntValue> SampleSizeParameter =>
+      (IFixedValueParameter<IntValue>)Parameters[SampleSizeParameterName];
+
+    public Dataset Samples {
+      get => SamplesParameter.ActualValue;
+      set => SamplesParameter.ActualValue = value;
+    }
 
     public bool OptimizeParameters {
       get => OptimizerParametersParameter.Value.Value;
@@ -81,6 +95,11 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       set => PenaltyFactorParameter.Value.Value = value;
     }
 
+    public int SampleSize {
+      get => SampleSizeParameter.Value.Value;
+      set => SampleSizeParameter.Value.Value = value;
+    }
+
 
     public override bool Maximization => false; // NMSE is minimized
 
@@ -105,6 +124,9 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
         "The estimator which is used to estimate output ranges of models (default: interval arithmetic).", new IntervalArithPessimisticEstimator()));
       Parameters.Add(new FixedValueParameter<DoubleValue>(PenaltyFactorParameterName,
         "Punishment factor for constraint violations for soft constraint handling (fitness = NMSE + penaltyFactor * avg(violations)) (default: 1.0)", new DoubleValue(1.0)));
+      Parameters.Add(new ValueLookupParameter<Dataset>(SamplesParameterName, "Holds the samples."));
+      Parameters.Add(new FixedValueParameter<IntValue>(SampleSizeParameterName,
+        "Sets the amount of samples taken.", new IntValue(10000)));
     }
 
     [StorableHook(HookType.AfterDeserialization)]
@@ -123,6 +145,28 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       var interpreter = SymbolicDataAnalysisTreeInterpreterParameter.ActualValue;
       var estimationLimits = EstimationLimitsParameter.ActualValue;
       var applyLinearScaling = ApplyLinearScalingParameter.ActualValue.Value;
+      var variableRanges = problemData.VariableRanges;
+      var random = new MersenneTwister();
+
+      if(PessimisticEstimator is SamplingEsitmator samplingEstimator) {
+        if(SamplesParameter.ActualValue == null) {
+          //Generate my samples
+          var data = new List<List<double>>();
+          foreach(var variable in problemData.AllowedInputVariables) {
+            var values = new List<double>();
+            var sampleInterval = variableRanges.GetInterval(variable);
+            for(var i = 0; i < SampleSize; ++i) {
+              var value = new UniformDistributedRandom(random, sampleInterval.LowerBound, sampleInterval.UpperBound).NextDouble();
+              values.Add(value);
+            }
+            data.Add(values);
+          }
+          var dataset = new Dataset(problemData.AllowedInputVariables, data);
+          SamplesParameter.Value = dataset;
+        }
+
+        //samplingEstimator.Samples = SamplesParameter.ActualValue.Value;
+      }
 
       var quality = Evaluate(tree, problemData, rows, interpreter, applyLinearScaling, estimationLimits.Lower, estimationLimits.Upper);
       QualityParameter.ActualValue = new DoubleValue(quality);
@@ -426,6 +470,12 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     public class EvaluationsCounter {
       public int FunctionEvaluations = 0;
       public int GradientEvaluations = 0;
+    }
+
+    public override void InitializeState() {
+      base.InitializeState();
+
+      SamplesParameter.Value = null;
     }
   }
 }

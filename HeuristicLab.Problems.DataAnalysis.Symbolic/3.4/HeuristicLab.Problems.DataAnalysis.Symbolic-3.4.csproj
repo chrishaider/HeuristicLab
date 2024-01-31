@@ -188,6 +188,7 @@
     <Compile Include="Interpreter\IntervalInterpreter.cs" />
     <Compile Include="Interpreter\NativeInterpreter.cs" />
     <Compile Include="Interpreter\ParameterOptimizer.cs" />
+    <Compile Include="Interpreter\SamplingEsitmator.cs" />
     <Compile Include="Interpreter\SamplingOptimisticEstimator.cs" />
     <Compile Include="Interpreter\SymbolicDataAnalysisExpressionCompiledTreeInterpreter.cs" />
     <Compile Include="Interpreter\SymbolicDataAnalysisExpressionTreeBatchInterpreter.cs" />
