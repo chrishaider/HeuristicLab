@@ -103,14 +103,6 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
 
     private static string GenerateNecessaryImports(int mathLibCounter, int statisticLibCounter) {
       StringBuilder strBuilder = new StringBuilder();
-      if (mathLibCounter > 0 || statisticLibCounter > 0) {
-        strBuilder.AppendLine("# imports");
-        if (mathLibCounter > 0)
-          strBuilder.AppendLine("import math");
-        if (statisticLibCounter > 0)
-          strBuilder.AppendLine("import statistics");
-        strBuilder.AppendLine();
-      }
       return strBuilder.ToString();
     }
 
@@ -129,15 +121,6 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
 
     private static string GenerateModelEvaluationFunction(ISet<string> variables) {
       StringBuilder strBuilder = new StringBuilder();
-      strBuilder.Append("def evaluate(");
-      var orderedVariables = variables.OrderBy(n => n, new NaturalStringComparer());
-      foreach (var variable in orderedVariables) {
-        strBuilder.Append($"{variable}");
-        if (variable != orderedVariables.Last())
-          strBuilder.Append(", ");
-      }
-      strBuilder.AppendLine("):");
-      strBuilder.Append("\treturn ");
       return strBuilder.ToString();
     }
 
@@ -160,25 +143,25 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
       else if (symbol is Average)
         FormatNode(node, strBuilder, prefixSymbol: "statistics.mean", openingSymbol: "([", closingSymbol: "])");
       else if (symbol is Sine)
-        FormatNode(node, strBuilder, "math.sin");
+        FormatNode(node, strBuilder, "sin");
       else if (symbol is Cosine)
-        FormatNode(node, strBuilder, "math.cos");
+        FormatNode(node, strBuilder, "cos");
       else if (symbol is Tangent)
-        FormatNode(node, strBuilder, "math.tan");
+        FormatNode(node, strBuilder, "tan");
       else if (symbol is HyperbolicTangent)
-        FormatNode(node, strBuilder, "math.tanh");
+        FormatNode(node, strBuilder, "tanh");
       else if (symbol is Exponential)
-        FormatNode(node, strBuilder, "math.exp");
+        FormatNode(node, strBuilder, "exp");
       else if (symbol is Logarithm)
-        FormatNode(node, strBuilder, "math.log");
+        FormatNode(node, strBuilder, "log");
       else if (symbol is Power)
-        FormatNode(node, strBuilder, "math.pow");
+        FormatNode(node, strBuilder, "pow");
       else if (symbol is Root)
         FormatRoot(node, strBuilder);
       else if (symbol is Square)
         FormatPower(node, strBuilder, "2");
       else if (symbol is SquareRoot)
-        FormatNode(node, strBuilder, "math.sqrt");
+        FormatNode(node, strBuilder, "sqrt");
       else if (symbol is Cube)
         FormatPower(node, strBuilder, "3");
       else if (symbol is CubeRoot)
@@ -234,9 +217,8 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
     }
 
     private static void FormatPower(ISymbolicExpressionTreeNode node, StringBuilder strBuilder, string exponent) {
-      strBuilder.Append("math.pow(");
       FormatRecursively(node.GetSubtree(0), strBuilder);
-      strBuilder.Append($", {exponent})");
+      strBuilder.Append($"**{exponent}");
     }
 
     private static void FormatRoot(ISymbolicExpressionTreeNode node, StringBuilder strBuilder) {

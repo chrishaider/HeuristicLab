@@ -241,7 +241,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
         violations = Math.Round(violations, decimalPlaces);
       }
 
-      objectives.Add(double.IsNaN(violations) ? double.PositiveInfinity : violations* penaltyFactor);
+      objectives.Add(double.IsNaN(violations) ? double.PositiveInfinity : violations);
 
       return objectives.ToArray();
     }

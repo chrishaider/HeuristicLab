@@ -28,7 +28,7 @@ using HeuristicLab.Core;
 using HeuristicLab.Data;
 using HeuristicLab.Encodings.SymbolicExpressionTreeEncoding;
 using HeuristicLab.Parameters;
-using HeuristicLab.Problems.DataAnalysis.Symbolicr;
+using HeuristicLab.Problems.DataAnalysis.Symbolic;
 using HeuristicLab.Random;
 
 namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
@@ -165,7 +165,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
           SamplesParameter.Value = dataset;
         }
 
-        //samplingEstimator.Samples = SamplesParameter.ActualValue.Value;
+        samplingEstimator.Samples = SamplesParameter.ActualValue;
       }
 
       var quality = Evaluate(tree, problemData, rows, interpreter, applyLinearScaling, estimationLimits.Lower, estimationLimits.Upper);

@@ -9,6 +9,8 @@ using HeuristicLab.Core;
 using HeuristicLab.Data;
 using HeuristicLab.Encodings.SymbolicExpressionTreeEncoding;
 using HeuristicLab.Parameters;
+using HeuristicLab.Random;
+using static alglib;
 
 namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
   [Item("NMSE soft constraints evaluator", "Calculates NMSE of a symbolic regression solution and checks constraints. The fitness is a combination of NMSE and constraint violations.")]
@@ -25,6 +27,17 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     private const string GenerationsParameterName = "Generations";
 
 
+    private const string SamplesParameterName = "Samples";
+    private const string SampleSizeParameterName = "SampleSize";
+
+    private static int genChanged = 0;
+    private static int end = 100;
+    private static int start = 0;
+    private static double maxTemperature = 1.0; // Adjust based on your preference
+    private static double minTemperature = 0.1; // Adjust based on your preference
+    private static double coolingRate = 0.95; // Adjust based on your preference
+
+
     public IFixedValueParameter<BoolValue> OptimizerParametersParameter =>
       (IFixedValueParameter<BoolValue>)Parameters[OptimizeParametersParameterName];
 
@@ -38,6 +51,12 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       (IValueParameter<IPessimisticEstimator>)Parameters[BoundsEstimatorParameterName];
     public IFixedValueParameter<DoubleValue> PenaltyFactorParameter =>
       (IFixedValueParameter<DoubleValue>)Parameters[PenaltyFactorParameterName];
+
+    public IValueLookupParameter<Dataset> SamplesParameter =>
+      (IValueLookupParameter<Dataset>)Parameters[SamplesParameterName];
+
+    public IFixedValueParameter<IntValue> SampleSizeParameter =>
+      (IFixedValueParameter<IntValue>)Parameters[SampleSizeParameterName];
 
     public bool OptimizeParameters {
       get => OptimizerParametersParameter.Value.Value;
@@ -62,6 +81,16 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
     public double PenalityFactor {
       get => PenaltyFactorParameter.Value.Value;
       set => PenaltyFactorParameter.Value.Value = value;
+    }
+
+    public Dataset Samples {
+      get => SamplesParameter.ActualValue;
+      set => SamplesParameter.ActualValue = value;
+    }
+
+    public int SampleSize {
+      get => SampleSizeParameter.Value.Value;
+      set => SampleSizeParameter.Value.Value = value;
     }
 
 
@@ -96,6 +125,10 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
       Parameters.Add(new LookupParameter<IntValue>(MaximumGenerationsParameterName, "The maximum number of generations which should be processed."));
       Parameters.Add(new LookupParameter<IntValue>(GenerationsParameterName, "The current number of generations."));
+
+      Parameters.Add(new ValueLookupParameter<Dataset>(SamplesParameterName, "Holds the samples."));
+      Parameters.Add(new FixedValueParameter<IntValue>(SampleSizeParameterName,
+        "Sets the amount of samples taken.", new IntValue(10000)));
     }
 
     [StorableHook(HookType.AfterDeserialization)]
@@ -105,6 +138,11 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       return new NMSESoftConstraintEvaluator(this, cloner);
     }
 
+    public override void InitializeState() {
+      base.InitializeState();
+
+      SamplesParameter.Value = null;
+    }
     #endregion
 
     public override IOperation InstrumentedApply() {
@@ -114,6 +152,33 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
       var interpreter = SymbolicDataAnalysisTreeInterpreterParameter.ActualValue;
       var estimationLimits = EstimationLimitsParameter.ActualValue;
       var applyLinearScaling = ApplyLinearScalingParameter.ActualValue.Value;
+      var variableRanges = problemData.VariableRanges;
+      var random = new MersenneTwister();
+
+      if (PessimisticEstimator is SamplingEsitmator samplingEstimator) {
+        if (SamplesParameter.ActualValue == null) {
+          //Generate my samples
+          var data = new List<List<double>>();
+          foreach (var variable in problemData.AllowedInputVariables) {
+            var values = new List<double>();
+            var sampleInterval = variableRanges.GetInterval(variable);
+            for (var i = 0; i < SampleSize; ++i) {
+              var value = new UniformDistributedRandom(random, sampleInterval.LowerBound, sampleInterval.UpperBound).NextDouble();
+              values.Add(value);
+            }
+            //Add min and max to samples
+            values.Add(sampleInterval.LowerBound);
+            values.Add(sampleInterval.UpperBound);
+            data.Add(values);
+          }
+          var dataset = new Dataset(problemData.AllowedInputVariables, data);
+          SamplesParameter.Value = dataset;
+        }
+
+        samplingEstimator.Samples = SamplesParameter.ActualValue;
+      }
+
+
       var quality = Evaluate(tree, problemData, rows, interpreter, applyLinearScaling, estimationLimits.Lower, estimationLimits.Upper);
       QualityParameter.ActualValue = new DoubleValue(quality);
 
@@ -153,19 +218,48 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
       // soft constraints
       //Calculate penalty factor as a percentage of current generation
-      var end = 100;
-      var start = 50;
-      var proportion = (double)(end - start) / maxGenerations;
-      var penalty = (int)(start + (proportion * currentGeneration));
-      var penaltyFactor = penalty / 100.0;
-      var weightedViolationsAvg = constraints
-        .Zip(constraintViolations, (c, v) => c.Weight * v)
-        .Average();
+      //Linear approach
+      //var end = 100;
+      //var start = 50;
+      //var proportion = (double)(end - start) / maxGenerations;
+      //var penalty = (int)(start + (proportion * currentGeneration));
+      //var penaltyFactor = penalty / 100.0;
+      //var weightedViolationsAvg = constraints
+      //  .Zip(constraintViolations, (c, v) => c.Weight * v)
+      //  .Average();
 
       //var violationProp = 1.0 / constraints.Count();
       //var weightedViolationsAvg = constraintViolations.Where(cv => cv > 0).Aggregate(0.0, (current, cv) => current + violationProp);
 
-      return Math.Min(nmse, 1.0) + penaltyFactor * weightedViolationsAvg;
+      //Exponential approach
+      //var end = 100;
+      //var start = 20;
+      //var exponent = 2.0; 
+      //var penalty = (int)(start + Math.Pow(currentGeneration / (double)maxGenerations, exponent) * (end - start));
+      //var penaltyFactor = penalty / 100.0;
+      //var weightedViolationsAvg = constraints.Zip(constraintViolations, (c, v) => c.Weight * v).Average();
+
+      //Simulated
+
+
+      // Calculate the current temperature based on the progress of generations
+      //var currentTemperature = maxTemperature * Math.Pow(coolingRate, currentGeneration);
+
+      // Calculate the penalty using the temperature
+      //var penalty = (int)(start + (currentTemperature / maxTemperature) * (end - start));
+      //var penaltyFactor = penalty / 100.0;
+
+      var penaltyFactor = GetAdaptiveWeight(currentGeneration, maxGenerations, 0.4, 0.95);
+
+
+      var weightedViolationsAvg = constraints.Zip(constraintViolations, (c, v) => c.Weight * v).Average();
+
+      var error= nmse + penaltyFactor * weightedViolationsAvg;
+      //if(genChanged < currentGeneration)
+      //  AdaptParameters(currentGeneration, maxGenerations, ref maxTemperature, ref minTemperature, ref coolingRate);
+
+
+      return Math.Min(error, 1.0);
     }
 
     public override double Evaluate(
@@ -196,6 +290,36 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolic.Regression {
 
       return nmse;
     }
+
+    static double GetAdaptiveWeight(int currentGeneration, int maxGenerations, double cooldownProbability, double cooldownFactor) {
+      double weight = 0.0;
+      bool cooldown = false;
+
+      if (!cooldown) {
+        weight = (double)currentGeneration / (maxGenerations - 1);
+      } else {
+        weight *= cooldownFactor;
+      }
+      var random = new MersenneTwister();
+      // Check for cooldown phase
+      if (random.NextDouble() < cooldownProbability) {
+        cooldown = true;
+      } else {
+        cooldown = false;
+      }
+
+      return weight;
+    }
+
+    private static void AdaptParameters(int currentGeneration, int maxIterations, ref double maxTemp, ref double minTemp,
+      ref double coolingRate) {
+      if (currentGeneration % (maxIterations / 100) != 0) return;
+      maxTemp *= 0.9;
+      minTemp *= 1.1;
+      coolingRate *= 0.98;
+      genChanged++;
+    }
+
 
     public override double Evaluate(
       ISymbolicExpressionTree tree,

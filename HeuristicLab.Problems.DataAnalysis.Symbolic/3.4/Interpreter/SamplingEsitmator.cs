@@ -14,7 +14,7 @@ using HeuristicLab.Parameters;
 using HeuristicLab.Problems.DataAnalysis.Symbolic;
 using Variable = HeuristicLab.Problems.DataAnalysis.Symbolic.Variable;
 
-namespace HeuristicLab.Problems.DataAnalysis.Symbolicr {
+namespace HeuristicLab.Problems.DataAnalysis.Symbolic {
   [StorableType("0FDA3604-9526-44E5-819A-C2FC275619A8")]
   [Item("Sampling Estimator", "Estimates the bounds of the model with samples.")]
   public sealed class SamplingEsitmator : ParameterizedNamedItem, IPessimisticEstimator {
@@ -67,17 +67,27 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolicr {
       EvaluatedSolutions = 0;
     }
     public double GetConstraintViolation(ISymbolicExpressionTree tree, IntervalCollection variableRanges, ShapeConstraint constraint) {
+      var interpreter = new SymbolicDataAnalysisExpressionTreeInterpreter();
+      var estimatedValues = interpreter.GetSymbolicExpressionTreeValues(tree, Samples, Enumerable.Range(0, Samples.Rows));
+      var violationsList = new List<double>();
 
-      var rows = Samples.Rows;
-
-
-      for (var i = 0; i < rows; ++i) {
-        
+      foreach (var value in estimatedValues) {
+        var violation = GetDistanceToInterval(value, constraint.Interval);
+        violationsList.Add(violation);
       }
 
-      Console.WriteLine(Samples);
 
-      return 0;
+      return violationsList.Max();
+    }
+
+    private double GetDistanceToInterval(double scalar, Interval constraint) {
+      if (constraint.Contains(scalar))
+        return 0;
+
+      var distanceToLowerBound = Math.Abs(scalar - constraint.LowerBound);
+      var distanceToUpperBound = Math.Abs(scalar - constraint.UpperBound);
+
+      return Math.Min(distanceToLowerBound, distanceToUpperBound);
     }
 
     public Interval GetModelBound(ISymbolicExpressionTree tree, IntervalCollection variableRanges) {
@@ -90,6 +100,7 @@ namespace HeuristicLab.Problems.DataAnalysis.Symbolicr {
 
     public void InitializeState() {
       EvaluatedSolutions = 0;
+      Samples = null;
     }
 
     public bool IsCompatible(ISymbolicExpressionTree tree) {
