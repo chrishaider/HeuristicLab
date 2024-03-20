@@ -130,6 +130,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Interfaces\IMultiObjectiveConstraintsEvaluator.cs" />
+    <Compile Include="MultiObjective\HybridConstraintEvaluator.cs" />
     <Compile Include="MultiObjective\MultiObjectiveValidSolutionAnalyzer.cs" />
     <Compile Include="MultiObjective\NMSEMultiObjectiveConstraintsEvaluator.cs" />
     <Compile Include="MultiObjective\NMSEMultiObjectiveHybridConstraintEvaluator.cs" />
